@@ -6,3 +6,6 @@
 
 # npm
 node_modules
+
+# local API key
+api-key.js

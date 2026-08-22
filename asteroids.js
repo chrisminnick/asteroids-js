@@ -6,32 +6,62 @@ dateForm.addEventListener('submit', function(event){
 	var date = dateForm.elements['date'].value;
 	// Error handling for date
 	dateErrorHandling(date);
-	//Get an API key from https://api.nasa.gov/index.html#apply-for-an-api-key
-	var key = 'yAyH8cJEzor6tU5Kl6iLxnNnqLunMUq9jpy9rES4';
-	//URL for NASA's API
+	var key = (window.NASA_API_KEY || '').trim();
+	if (!key) {
+		callSampleData(date);
+		return;
+	}
+	// URL for NASA's API
 	var url = 'https://api.nasa.gov/neo/rest/v1/feed?start_date=' + date + '&api_key=' + key;
-	//Fetch call to get JSON data, create asteroids and append them to the solar system
+	// Fetch call to get JSON data, create asteroids and append them to the solar system
 	callNASA(url, date);
 });
 
 function callNASA(url, date) {
 	fetch(url).then(function(response) {
+		if (!response.ok) {
+			throw new Error('NASA request failed with status ' + response.status);
+		}
 		return response.json();
 	}).then(function(json) {
-		//Access the asteroid data of the JSON
-		var asteroids = json.near_earth_objects[date];
-		//Iterate through the data 
-		asteroids.map(function(element){
-			//Access the distance, speed, size and hazard data for each asteroid
-			var distance = element.close_approach_data[0].miss_distance.kilometers;
-			var speed = element.close_approach_data[0].relative_velocity.kilometers_per_hour;
-			var size = element.estimated_diameter.meters.estimated_diameter_max;
-			var hazardous = element.is_potentially_hazardous_asteroid;
-			//What does the data look like?
-			displayDataToTheConsole(hazardous, distance, speed, size);
-			//Place each asteroid on the page            
-			placeAsteroid(hazardous, distance, speed, size);
-		});
+		renderAsteroids(json, date);
+	}).catch(function() {
+		callSampleData(date);
+	});
+}
+
+function callSampleData(date) {
+	fetch('sample-data.json').then(function(response) {
+		if (!response.ok) {
+			throw new Error('Sample data request failed with status ' + response.status);
+		}
+		return response.json();
+	}).then(function(json) {
+		renderAsteroids(json, date);
+	}).catch(function(error) {
+		console.error(error);
+		var click = document.getElementById('click');
+		click.textContent = 'Could not load NASA API or local sample data.';
+	});
+}
+
+function renderAsteroids(json, date) {
+	var objectDates = json.near_earth_objects || {};
+	var selectedDate = date;
+	if (!objectDates[selectedDate]) {
+		selectedDate = Object.keys(objectDates)[0];
+	}
+	var asteroids = objectDates[selectedDate] || [];
+	asteroids.map(function(element){
+		// Access the distance, speed, size and hazard data for each asteroid
+		var distance = element.close_approach_data[0].miss_distance.kilometers;
+		var speed = element.close_approach_data[0].relative_velocity.kilometers_per_hour;
+		var size = element.estimated_diameter.meters.estimated_diameter_max;
+		var hazardous = element.is_potentially_hazardous_asteroid;
+		// What does the data look like?
+		displayDataToTheConsole(hazardous, distance, speed, size);
+		// Place each asteroid on the page
+		placeAsteroid(hazardous, distance, speed, size);
 	});
 }
 
